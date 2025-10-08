@@ -617,13 +617,22 @@ FROM EMP;
 /* B6) Sukurk stulpelį EMAIL formatu:
        lower(ename) || '@company.com' */
 -- Write your query below:
+SELECT LOWER(ENAME) || '@company.com' AS EMAIL
+FROM SCOTT.EMP;
 
 
 /* B7) Parodyk ENAME ir tekstą:
-       "NEW"  – jei priimtas per paskutinius 6 mėnesius,
+       "NEW"  – jei priimtas per paskutinius 500 mėnesius,
        "EXPERIENCED" – kitu atveju. */
--- Write your query below:
+-- Write your query below: 
 
+-- 500*30 = 15000
+SELECT ENAME,
+    CASE
+        WHEN SYSDATE - HIREDATE < 15000 THEN 'NEW'
+        ELSE 'EXPERIENCED'
+        END AS STATUS
+FROM SCOTT.EMP;
 
 
 /* =================
@@ -635,6 +644,9 @@ FROM EMP;
        14 kalendorinių dienų. (ADD_MONTHS, +14, ir pan.) */
 -- Write your query below:
 
+SELECT ENAME, HIREDATE, ADD_MONTHS(HIREDATE, 24) + 14 AS VACATION_END
+FROM SCOTT.EMP;
+
 
 /* C9) Interaktyviai įvesk duomenis (dvi datos) ir parodyk darbuotojus,
        kurių REVIEW data (HIREDATE + 12 mėn.) patenka į intervalą.
@@ -644,12 +656,25 @@ FROM EMP;
 -- ACCEPT DATE_TO   CHAR PROMPT 'Enter end   (YYYY-MM-DD): '
 -- Write your query below:
 
+SELECT ENAME, HIREDATE, ADD_MONTHS(HIREDATE,12) AS REVIEW_DATE
+FROM SCOTT.EMP
+WHERE ADD_MONTHS(HIREDATE,12) BETWEEN TO_DATE('&DATE_FROM','YYYY-MM-DD')
+                                  AND TO_DATE('&DATE_TO','YYYY-MM-DD');
+
 
 /* C10) Parodyk, kurią savaitės dieną žmogus buvo priimtas
         (pvz., MONDAY) ir ar tai buvo darbo diena (Mon–Fri)
         ar savaitgalis. */
 -- Write your query below:
 
+SELECT ENAME, HIREDATE,
+       TO_CHAR(HIREDATE,'DAY','NLS_DATE_LANGUAGE=ENGLISH') AS WEEKDAY,
+       CASE 
+         WHEN TO_CHAR(HIREDATE,'DY','NLS_DATE_LANGUAGE=ENGLISH') IN ('SAT','SUN') 
+           THEN 'WEEKEND'
+         ELSE 'WORKDAY'
+       END AS DAY_TYPE
+FROM SCOTT.EMP;
 
 
 /* =====================
@@ -663,16 +688,38 @@ FROM EMP;
         rikiuok pagal vidutinę algą mažėjančiai. */
 -- Write your query below:
 
+SELECT DEPTNO,
+       COUNT(*) AS EMP_COUNT,
+       AVG(SAL) AS AVG_SAL,
+       MAX(SAL) AS MAX_SAL
+FROM SCOTT.EMP
+GROUP BY DEPTNO
+ORDER BY AVG(SAL) DESC;
+
 
 /* D12) Rask pareigą (-as), kurioje vidutinė alga didžiausia.
         Jei yra lygybių – grąžink visas. */
 -- Write your query below:
+
+SELECT JOB, AVG(SAL) AS AVG_SAL
+FROM SCOTT.EMP
+GROUP BY JOB
+HAVING AVG(SAL) = (SELECT MAX(AVG(SAL)) 
+                   FROM SCOTT.EMP 
+                   GROUP BY JOB);
 
 
 /* D13) Kiekvienam vadovui parodyk pavaldinių skaičių.
         Įtrauk ir vadovus, kurie šiuo metu neturi pavaldinių (0). */
 -- Write your query below:
 
+SELECT E1.EMPNO AS MANAGER_NO,
+       E1.ENAME AS MANAGER_NAME,
+       COUNT(E2.EMPNO) AS SUBORDINATE_COUNT
+FROM SCOTT.EMP E1
+LEFT JOIN SCOTT.EMP E2 ON E1.EMPNO = E2.MGR
+GROUP BY E1.EMPNO, E1.ENAME
+ORDER BY E1.ENAME;
 
 
 /* ===========================
@@ -685,17 +732,42 @@ FROM EMP;
         'UNKNOWN'    jei COMM IS NULL */
 -- Write your query below:
 
+SELECT ENAME, COMM,
+       CASE
+         WHEN COMM > 0 THEN 'HAS BONUS'
+         WHEN COMM = 0 THEN 'NO BONUS'
+         ELSE 'UNKNOWN'
+       END AS BONUS_FLAG
+FROM SCOTT.EMP;
+
 
 /* E15) Pateik ENAME ir SAL_LEVEL pagal SALGRADE diapazonus.
         Galutinį lygį parodyk kaip A, B, C, ... (arba 1,2,3,...).
         (Join EMP.SAL su SALGRADE.LO SAL–HI). */
 -- Write your query below:
 
+SELECT E.ENAME, E.SAL,
+       CASE G.GRADE
+         WHEN 1 THEN 'A'
+         WHEN 2 THEN 'B'
+         WHEN 3 THEN 'C'
+         WHEN 4 THEN 'D'
+         WHEN 5 THEN 'E'
+       END AS SAL_LEVEL
+FROM SCOTT.EMP E
+JOIN SCOTT.SALGRADE G ON E.SAL BETWEEN G.LOSAL AND G.HISAL;
+
 
 /* E16) Vietoje 'SALESMAN' rodyk 'Salesperson' (visuose skyriuose),
         kitur – INITCAP(JOB). Tik išvestyje, neredaguojant duomenų. */
 -- Write your query below:
 
+SELECT ENAME,
+       CASE 
+         WHEN JOB = 'SALESMAN' THEN 'Salesperson'
+         ELSE INITCAP(JOB)
+       END AS JOB_TITLE
+FROM SCOTT.EMP;
 
 
 /* ===============================
@@ -706,21 +778,46 @@ FROM EMP;
         rikiuok pagal LOC. */
 -- Write your query below:
 
+SELECT E.ENAME, D.DNAME, D.LOC
+FROM SCOTT.EMP E
+JOIN SCOTT.DEPT D ON E.DEPTNO = D.DEPTNO
+ORDER BY D.LOC;
+
 
 /* F18) Pateik darbuotojus, kurių alga yra aukštesnė už
         SAVO skyriaus vidurkį. */
 -- Write your query below:
+
+SELECT E.ENAME, E.SAL, E.DEPTNO
+FROM SCOTT.EMP E
+WHERE E.SAL > (SELECT AVG(SAL)
+               FROM SCOTT.EMP
+               WHERE DEPTNO = E.DEPTNO);
 
 
 /* F19) Pateik skyrius, kuriuose nėra pareigybės 'CLERK'.
         (NOT EXISTS yra patogu.) */
 -- Write your query below:
 
+SELECT D.DEPTNO, D.DNAME
+FROM SCOTT.DEPT D
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM SCOTT.EMP E
+    WHERE E.DEPTNO = D.DEPTNO
+      AND E.JOB = 'CLERK'
+);
+
 
 /* F20) Pateik darbuotojų sąrašą su jų vadovų pavardėmis
         toje pačioje eilutėje (self-join EMP->EMP). */
 -- Write your query below:
 
+SELECT E.ENAME AS EMPLOYEE,
+       M.ENAME AS MANAGER
+FROM SCOTT.EMP E
+LEFT JOIN SCOTT.EMP M ON E.MGR = M.EMPNO
+ORDER BY E.ENAME;
 
 
 /* ===========================
@@ -732,16 +829,28 @@ FROM EMP;
         Pvz.: &MIN_SAL ir &MAX_SAL arba ACCEPT. */
 -- Write your query below:
 
+SELECT ENAME, SAL
+FROM SCOTT.EMP
+WHERE SAL BETWEEN &MIN_SAL AND &MAX_SAL;
+
 
 /* G22) Įvesk pareigą (case-insensitive) ir skyrių; parodyk tik tuos
         darbuotojus, kurie atitinka abu kriterijus. */
 -- Write your query below:
+
+SELECT ENAME, JOB, DEPTNO
+FROM SCOTT.EMP
+WHERE UPPER(JOB) = UPPER('&JOB')
+  AND DEPTNO = &DEPTNO;
 
 
 /* G23) Įvesk datą DD.MM.YYYY ir parodyk, kiek dienų liko
         iki tos datos nuo šiandien. */
 -- Write your query below:
 
+SELECT '&DATE' AS INPUT_DATE,
+       TO_DATE('&DATE','DD.MM.YYYY') - TRUNC(SYSDATE) AS DAYS_LEFT
+FROM DUAL;
 
 
 /* ==================
@@ -752,15 +861,31 @@ FROM EMP;
         penktadienį. (NEXT_DAY) */
 -- Write your query below:
 
+SELECT ENAME,
+       NEXT_DAY(SYSDATE, 'FRIDAY') AS NEXT_FRIDAY
+FROM SCOTT.EMP;
+
 
 /* H25) Parodyk ENAME ir sutrumpintą pavardę kaip S**H
         (pirmoji ir paskutinė raidės, vidurys žvaigždutėmis). */
 -- Write your query below:
 
+SELECT ENAME,
+       SUBSTR(ENAME,1,1) || '***' || SUBSTR(ENAME,-1,1) AS SHORT_NAME
+FROM SCOTT.EMP;
+
 
 /* H26) Išvesk kiekvieno skyriaus antrą pagal dydį algą (jei yra).
         (Analitinės funkcijos arba sub-užklausos.) */
 -- Write your query below:
+
+SELECT DEPTNO, SAL
+FROM (
+  SELECT DEPTNO, SAL,
+         DENSE_RANK() OVER (PARTITION BY DEPTNO ORDER BY SAL DESC) AS RANKING
+  FROM SCOTT.EMP
+)
+WHERE RANKING = 2;
 
 
 /* ============================
